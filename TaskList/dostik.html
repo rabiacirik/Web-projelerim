@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Dostik Görev Sistemi PRO</title>
+
+<style>
+    body {
+        background: #FFF7DD;
+        font-family: "Nunito", sans-serif;
+        display: flex;
+        justify-content: center;
+        padding: 40px;
+    }
+
+    .container {
+        width: 430px;
+        background: white;
+        padding: 25px;
+        border-radius: 20px;
+        box-shadow: 0 0 15px #ffd889;
+        animation: fadeIn 0.7s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    h2 {
+        text-align: center;
+        color: #FF7BA1;
+    }
+
+    input {
+        width: 70%;
+        padding: 10px;
+        border-radius: 10px;
+        border: 2px solid #FFB6C1;
+    }
+
+    button {
+        padding: 10px 15px;
+        border: none;
+        background: #FFB6C1;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .task, .reward-item {
+        background: #FFF1F6;
+        padding: 10px;
+        border-radius: 10px;
+        margin-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        animation: slideIn .4s ease;
+    }
+
+    .completed {
+        background: #c8ffd0;
+    }
+
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #FFB6C1;
+        padding: 25px;
+        border-radius: 20px;
+        color: white;
+        font-size: 22px;
+        text-align: center;
+        display: none;
+        animation: fadeIn .4s ease;
+    }
+
+    .edit-box {
+        background: white;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid pink;
+    }
+
+    .btn-small {
+        font-size: 12px;
+        padding: 5px 7px;
+        margin-left: 5px;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>🌟 Dostik Görev Sistemi  🌟</h2>
+
+    <h3>Görev Ekle</h3>
+    <input id="taskInput" placeholder="Görev ekle...">
+    <button onclick="addTask()">Ekle</button>
+
+    <h3>Görevler</h3>
+    <div id="taskList"></div>
+
+    <h3>Tamamlananlar</h3>
+    <div id="completedList"></div>
+
+    <hr>
+
+    <h3>🎁 Ödül Ekle</h3>
+    <input id="rewardInput" placeholder="Ödül ekle...">
+    <button onclick="addReward()">Ekle</button>
+
+    <div id="rewardList"></div>
+
+    <hr>
+    <h3>⭐ Level: <span id="level">1</span></h3>
+</div>
+
+<!-- Ödül Popup -->
+<div id="rewardPopup" class="popup"></div>
+
+<!-- Level Up Popup -->
+<div id="levelPopup" class="popup"></div>
+
+<audio id="dingSound" src="data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAA... (kısa ding sesi base64)"> </audio>
+
+<script>
+/* ======== LOCAL STORAGE VERİLERİ ======== */
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+let completedTasks = JSON.parse(localStorage.getItem("completedTasks")) || [];
+let rewards = JSON.parse(localStorage.getItem("rewards")) || [];
+let completedCount = completedTasks.length;
+let level = JSON.parse(localStorage.getItem("level")) || 1;
+
+/* ======== SAYFAYI YÜKLE ======== */
+document.getElementById("level").innerText = level;
+renderTasks();
+renderCompleted();
+renderRewards();
+
+/* ========= GÖREV EKLE ========= */
+function addTask() {
+    let text = taskInput.value.trim();
+    if (!text) return;
+
+    tasks.push(text);
+    save();
+    taskInput.value = "";
+    renderTasks();
+}
+
+/* ========= GÖREV LİSTELE ========= */
+function renderTasks() {
+    taskList.innerHTML = "";
+    tasks.forEach((t, i) => {
+        taskList.innerHTML += `
+            <div class="task">
+                <span>${t}</span>
+                <div>
+                    <button class="btn-small" onclick="editTask(${i})">Düzenle</button>
+                    <button class="btn-small" onclick="completeTask(${i})">✔</button>
+                    <button class="btn-small" onclick="deleteTask(${i})">🗑</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+/* ========= GÖREV TAMAMLAMA ========= */
+function completeTask(i) {
+    completedTasks.push(tasks[i]);
+    tasks.splice(i, 1);
+    completedCount++;
+    checkReward();
+    checkLevelUp();
+
+    save();
+    renderTasks();
+    renderCompleted();
+}
+
+/* ========= TAMAMLANANLARI LİSTELE ========= */
+function renderCompleted() {
+    completedList.innerHTML = "";
+    completedTasks.forEach((t, i) => {
+        completedList.innerHTML += `
+            <div class="task completed">
+                <span>${t}</span>
+                <button class="btn-small" onclick="deleteCompleted(${i})">🗑</button>
+            </div>
+        `;
+    });
+}
+
+/* ========= GÖREV DÜZENLE ========= */
+function editTask(i) {
+    let yeni = prompt("Yeni metni yaz:", tasks[i]);
+    if (yeni && yeni.trim()) {
+        tasks[i] = yeni.trim();
+        save();
+        renderTasks();
+    }
+}
+
+/* ========= GÖREV SİL ========= */
+function deleteTask(i) {
+    tasks.splice(i, 1);
+    save();
+    renderTasks();
+}
+
+/* ========= TAMAMLANANI SİL ========= */
+function deleteCompleted(i) {
+    completedTasks.splice(i, 1);
+    save();
+    renderCompleted();
+}
+
+/* ========= ÖDÜL EKLE ========= */
+function addReward() {
+    let text = rewardInput.value.trim();
+    if (!text) return;
+
+    rewards.push(text);
+    rewardInput.value = "";
+    save();
+    renderRewards();
+}
+
+/* ========= ÖDÜLLERİ LİSTELE ========= */
+function renderRewards() {
+    rewardList.innerHTML = "";
+    rewards.forEach((r, i) => {
+        rewardList.innerHTML += `
+            <div class="reward-item">
+                <span>🎁 ${r}</span>
+                <div>
+                    <button class="btn-small" onclick="editReward(${i})">Düzenle</button>
+                    <button class="btn-small" onclick="deleteReward(${i})">🗑</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+/* ========= ÖDÜL DÜZENLE ========= */
+function editReward(i) {
+    let yeni = prompt("Yeni ödül:", rewards[i]);
+    if (yeni && yeni.trim()) {
+        rewards[i] = yeni.trim();
+        save();
+        renderRewards();
+    }
+}
+
+/* ========= ÖDÜL SİL ========= */
+function deleteReward(i) {
+    rewards.splice(i, 1);
+    save();
+    renderRewards();
+}
+
+/* ========= ÖDÜL KONTROLÜ ========= */
+function checkReward() {
+    if (completedCount % 3 === 0 && rewards.length > 0) {
+        let random = Math.floor(Math.random() * rewards.length);
+        let reward = rewards[random];
+
+        dingSound.play();
+
+        rewardPopup.innerHTML = `🎉 Tebrikler Dostik! <br> Ödülün: <b>${reward}</b>`;
+        rewardPopup.style.display = "block";
+        setTimeout(() => rewardPopup.style.display = "none", 3000);
+    }
+}
+
+/* ========= LEVEL UP ========= */
+function checkLevelUp() {
+    if (completedCount % 10 === 0) {
+        level++;
+        document.getElementById("level").innerText = level;
+        save();
+
+        dingSound.play();
+
+        levelPopup.innerHTML = `⭐ LEVEL UP! <br> Yeni Level: ${level}`;
+        levelPopup.style.display = "block";
+        setTimeout(() => levelPopup.style.display = "none", 3000);
+    }
+}
+
+/* ========= KAYDET ========= */
+function save() {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+    localStorage.setItem("completedTasks", JSON.stringify(completedTasks));
+    localStorage.setItem("rewards", JSON.stringify(rewards));
+    localStorage.setItem("level", JSON.stringify(level));
+}
+</script>
+
+</body>
+</html>
